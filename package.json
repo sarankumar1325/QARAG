@@ -3,7 +3,7 @@
   "private": true,
   "version": "1.0.0",
   "scripts": {
-    "build": "cd frontend/qarag && bun run build",
-    "vercel-build": "cd frontend/qarag && bun run build"
+    "build": "cd frontend/qarag && bun install && bun run build",
+    "vercel-build": "cd frontend/qarag && bun install && bun run build"
   }
 }
