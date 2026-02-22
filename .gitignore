@@ -1,0 +1,30 @@
+# Workspace / editor
+.claude/
+.ruff_cache/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Python
+**/__pycache__/
+**/.pytest_cache/
+**/.mypy_cache/
+**/.ruff_cache/
+**/.venv/
+
+# Env files
+**/.env
+
+# Node / frontend builds
+**/node_modules/
+**/dist/
+npm-debug.log*
+yarn-error.log*
+
+# Local runtime data
+backend/data/
+backend/documents/
+
+# Local nested-git backup (created when flattening repo)
+backend/.git-backup-local/
