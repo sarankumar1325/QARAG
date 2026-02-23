@@ -54,6 +54,9 @@ async def stream_chat_generator(request: ChatRequest) -> AsyncIterator[str]:
     start_time = time.time()
     conversation_id = None
     full_response = ""
+    # Enforce thread-scoped document filtering.
+    # Empty list means "this thread has no documents" (no global fallback).
+    thread_doc_ids = request.doc_ids if request.doc_ids is not None else []
 
     try:
         # Get or create conversation (thread isolation - each thread has its own history)
@@ -86,7 +89,7 @@ async def stream_chat_generator(request: ChatRequest) -> AsyncIterator[str]:
             planner_use_web, planner_query = llm_service.plan_web_search(
                 query=request.message,
                 conversation_history=conversations[conversation_id][:-1],
-                has_uploaded_documents=bool(request.doc_ids),
+                has_uploaded_documents=bool(thread_doc_ids),
             )
             use_web_search = request.force_web_search or planner_use_web
             if use_web_search:
@@ -97,9 +100,11 @@ async def stream_chat_generator(request: ChatRequest) -> AsyncIterator[str]:
 
         # PRIORITY 2: Search internal documents (thread-specific)
         # Only search documents that were uploaded to THIS thread (doc_ids)
-        search_kwargs = {"query": request.message, "n_results": request.max_internal_sources}
-        if request.doc_ids:
-            search_kwargs["doc_ids"] = request.doc_ids
+        search_kwargs = {
+            "query": request.message,
+            "n_results": request.max_internal_sources,
+            "doc_ids": thread_doc_ids,
+        }
 
         internal_sources = await document_store.search(**search_kwargs)
         print(f"[CHAT_STREAM] internal_sources count: {len(internal_sources)}")
@@ -133,7 +138,7 @@ async def stream_chat_generator(request: ChatRequest) -> AsyncIterator[str]:
             internal_sources=internal_filtered,
             web_sources=web_filtered,
             conversation_history=conversations[conversation_id][:-1],  # Only THIS conversation's history
-            has_uploaded_documents=bool(request.doc_ids),
+            has_uploaded_documents=bool(thread_doc_ids),
         ):
             full_response += token
             yield format_sse("token", {"content": token})

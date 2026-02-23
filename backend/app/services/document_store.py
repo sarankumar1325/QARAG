@@ -211,7 +211,11 @@ class SimpleDocumentStore:
         print(f"[SEARCH] query_terms: {query_terms}")
 
         rows: List[Dict[str, Any]] = []
-        if doc_ids and len(doc_ids) > 0:
+        if doc_ids is not None:
+            if len(doc_ids) == 0:
+                print("[SEARCH] empty doc_ids provided; returning no internal sources")
+                return []
+
             debug_chunks = await fetch_sql(
                 """
                 SELECT doc_id, COUNT(*) as chunk_count

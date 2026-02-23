@@ -10,6 +10,7 @@ function ChatSidebar({
   onThreadRename,
   onNewChat,
   onCloseMobile,
+  isMobile = false,
   isCollapsed = false,
   onToggleCollapse
 }) {
@@ -19,6 +20,14 @@ function ChatSidebar({
   const [showTooltip, setShowTooltip] = useState(false);
   const inputRef = useRef(null);
   const tooltipTimeoutRef = useRef(null);
+
+  useEffect(() => {
+    return () => {
+      if (tooltipTimeoutRef.current) {
+        clearTimeout(tooltipTimeoutRef.current);
+      }
+    };
+  }, []);
 
   useEffect(() => {
     if (editingId && inputRef.current) {
@@ -144,41 +153,43 @@ function ChatSidebar({
           </AnimatePresence>
 
           {/* Collapse/Expand Toggle Button - Always visible */}
-          <div className="toggle-wrapper" style={{ position: 'relative' }}>
-            <motion.button
-              className="collapse-toggle-btn"
-              onClick={onToggleCollapse}
-              onMouseEnter={handleToggleMouseEnter}
-              onMouseLeave={handleToggleMouseLeave}
-              title={isCollapsed ? `Expand sidebar (${shortcutKey})` : `Collapse sidebar (${shortcutKey})`}
-              whileHover={{ scale: 1.1 }}
-              whileTap={{ scale: 0.9 }}
-              transition={{ duration: 0.15 }}
-            >
-              <motion.div
-                animate={{ rotate: isCollapsed ? 0 : 180 }}
-                transition={{ duration: 0.2, ease: 'easeInOut' }}
+          {!isMobile && (
+            <div className="toggle-wrapper" style={{ position: 'relative' }}>
+              <motion.button
+                className="collapse-toggle-btn"
+                onClick={onToggleCollapse}
+                onMouseEnter={handleToggleMouseEnter}
+                onMouseLeave={handleToggleMouseLeave}
+                title={isCollapsed ? `Expand sidebar (${shortcutKey})` : `Collapse sidebar (${shortcutKey})`}
+                whileHover={{ scale: 1.1 }}
+                whileTap={{ scale: 0.9 }}
+                transition={{ duration: 0.15 }}
               >
-                {isCollapsed ? <ChevronRight size={20} /> : <ChevronLeft size={20} />}
-              </motion.div>
-            </motion.button>
-
-            {/* Tooltip for collapsed state */}
-            <AnimatePresence>
-              {showTooltip && isCollapsed && (
                 <motion.div
-                  className="collapse-tooltip"
-                  initial={{ opacity: 0, x: -10 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: -10 }}
-                  transition={{ duration: 0.15 }}
+                  animate={{ rotate: isCollapsed ? 0 : 180 }}
+                  transition={{ duration: 0.2, ease: 'easeInOut' }}
                 >
-                  Expand sidebar
-                  <kbd className="tooltip-shortcut">{shortcutKey}</kbd>
+                  {isCollapsed ? <ChevronRight size={20} /> : <ChevronLeft size={20} />}
                 </motion.div>
-              )}
-            </AnimatePresence>
-          </div>
+              </motion.button>
+
+              {/* Tooltip for collapsed state */}
+              <AnimatePresence>
+                {showTooltip && isCollapsed && (
+                  <motion.div
+                    className="collapse-tooltip"
+                    initial={{ opacity: 0, x: -10 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: -10 }}
+                    transition={{ duration: 0.15 }}
+                  >
+                    Expand sidebar
+                    <kbd className="tooltip-shortcut">{shortcutKey}</kbd>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+          )}
         </div>
       </div>
 

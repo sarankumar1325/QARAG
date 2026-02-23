@@ -340,16 +340,7 @@ function ChatInterface({ thread, onUpdateThread, onToggleDrawer }) {
             >
               What can I help you find?
             </motion.h1>
-            {!hasDocs ? (
-              <motion.p
-                className="welcome-sub animate-in"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ duration: 0.3, delay: 0.16 }}
-              >
-                Click the attachment icon to upload documents
-              </motion.p>
-            ) : (
+            {hasDocs && (
               <motion.p
                 className="welcome-sub animate-in"
                 initial={{ opacity: 0 }}

@@ -1,6 +1,7 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { MessageSquare, Plus, Upload, X, Menu, Trash2, AlertTriangle } from 'lucide-react';
+import { Trash2, AlertTriangle } from 'lucide-react';
+import { SignedIn, SignedOut } from '@clerk/clerk-react';
 import Header from './components/Header';
 import ChatSidebar from './components/ChatSidebar';
 import ChatInterface from './components/ChatInterface';
@@ -16,6 +17,12 @@ const SIDEBAR_COLLAPSED_KEY = 'qarag_sidebar_collapsed';
 const SIDEBAR_WIDTH = 260;
 const SIDEBAR_RAIL_WIDTH = 56;
 const SIDEBAR_TRANSITION_DURATION = 0.3;
+const MOBILE_BREAKPOINT = 1024;
+
+const getIsMobileViewport = () => {
+  if (typeof window === 'undefined') return false;
+  return window.innerWidth <= MOBILE_BREAKPOINT;
+};
 
 function App() {
   const [threads, setThreads] = useState([]);
@@ -24,6 +31,7 @@ function App() {
   const [docDrawerOpen, setDocDrawerOpen] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState(null); // { id, title }
+  const [isMobile, setIsMobile] = useState(getIsMobileViewport);
 
   // Load sidebar state from localStorage
   useEffect(() => {
@@ -79,13 +87,35 @@ function App() {
     const handleKeyDown = (e) => {
       if ((e.metaKey || e.ctrlKey) && e.key === '\\') {
         e.preventDefault();
-        setSidebarCollapsed(prev => !prev);
+        if (isMobile) {
+          setMobileMenuOpen(prev => !prev);
+        } else {
+          setSidebarCollapsed(prev => !prev);
+        }
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isMobile]);
+
+  // Keep viewport mode reactive
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(getIsMobileViewport());
+    };
+
+    handleResize();
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
   }, []);
+
+  // Close mobile drawer when switching back to desktop layout
+  useEffect(() => {
+    if (!isMobile) {
+      setMobileMenuOpen(false);
+    }
+  }, [isMobile]);
 
   const createNewThread = useCallback(() => {
     const newThread = {
@@ -141,15 +171,8 @@ function App() {
   const activeThread = threads.find(t => t.id === activeThreadId);
 
   // Computed sidebar width with animation
-  const sidebarWidth = sidebarCollapsed ? SIDEBAR_RAIL_WIDTH : SIDEBAR_WIDTH;
-
-  // Check if mobile
-  const isMobile = useMemo(() => {
-    if (typeof window !== 'undefined') {
-      return window.innerWidth < 768;
-    }
-    return false;
-  }, [mobileMenuOpen]); // Re-check when mobile menu toggles
+  const effectiveSidebarCollapsed = isMobile ? false : sidebarCollapsed;
+  const sidebarWidth = effectiveSidebarCollapsed ? SIDEBAR_RAIL_WIDTH : SIDEBAR_WIDTH;
 
   return (
     <div className="app">
@@ -161,6 +184,16 @@ function App() {
         docCount={activeThread?.documentIds?.length || 0}
       />
 
+      <SignedOut>
+        <main className="auth-main">
+          <section className="auth-panel">
+            <h1>Secure Document Workspace</h1>
+            <p>Sign in or create an account to access your chat threads and document tools.</p>
+          </section>
+        </main>
+      </SignedOut>
+
+      <SignedIn>
       {/* Mobile Sidebar Overlay */}
       <AnimatePresence>
         {mobileMenuOpen && (
@@ -178,9 +211,9 @@ function App() {
       <div className="main-layout">
         {/* Chat Sidebar - Integrated Rail Design */}
         <motion.aside
-          className="chat-sidebar"
+          className={`chat-sidebar ${mobileMenuOpen ? 'mobile-open' : ''}`}
           animate={{
-            width: sidebarWidth,
+            width: isMobile ? SIDEBAR_WIDTH : sidebarWidth,
           }}
           transition={{
             duration: SIDEBAR_TRANSITION_DURATION,
@@ -195,7 +228,8 @@ function App() {
             onThreadRename={renameThread}
             onNewChat={createNewThread}
             onCloseMobile={() => setMobileMenuOpen(false)}
-            isCollapsed={sidebarCollapsed}
+            isCollapsed={effectiveSidebarCollapsed}
+            isMobile={isMobile}
             onToggleCollapse={toggleSidebar}
           />
         </motion.aside>
@@ -262,41 +296,44 @@ function App() {
               exit={{ opacity: 0 }}
               onClick={() => setDeleteConfirm(null)}
             />
-            <motion.div
-              className="delete-modal"
-              initial={{ opacity: 0, scale: 0.9, y: 20 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.9, y: 20 }}
-              transition={{ type: 'spring', stiffness: 300, damping: 25 }}
-            >
-              <div className="delete-modal-icon">
-                <AlertTriangle size={32} />
-              </div>
-              <h2>Delete Chat?</h2>
-              <p>Are you sure you want to delete <strong>"{deleteConfirm.title}"</strong>? This action cannot be undone.</p>
-              <div className="delete-modal-actions">
-                <motion.button
-                  className="btn btn-secondary"
-                  onClick={() => setDeleteConfirm(null)}
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                >
-                  Cancel
-                </motion.button>
-                <motion.button
-                  className="btn btn-danger"
-                  onClick={() => deleteThread(deleteConfirm.id)}
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                >
-                  <Trash2 size={16} />
-                  Delete
-                </motion.button>
-              </div>
-            </motion.div>
+            <div className="delete-modal-center">
+              <motion.div
+                className="delete-modal"
+                initial={{ opacity: 0, scale: 0.9, y: 20 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.9, y: 20 }}
+                transition={{ type: 'spring', stiffness: 300, damping: 25 }}
+              >
+                <div className="delete-modal-icon">
+                  <AlertTriangle size={32} />
+                </div>
+                <h2>Delete Chat?</h2>
+                <p>Are you sure you want to delete <strong>"{deleteConfirm.title}"</strong>? This action cannot be undone.</p>
+                <div className="delete-modal-actions">
+                  <motion.button
+                    className="btn btn-secondary"
+                    onClick={() => setDeleteConfirm(null)}
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                  >
+                    Cancel
+                  </motion.button>
+                  <motion.button
+                    className="btn btn-danger"
+                    onClick={() => deleteThread(deleteConfirm.id)}
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                  >
+                    <Trash2 size={16} />
+                    Delete
+                  </motion.button>
+                </div>
+              </motion.div>
+            </div>
           </>
         )}
       </AnimatePresence>
+      </SignedIn>
     </div>
   );
 }

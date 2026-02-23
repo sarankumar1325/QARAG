@@ -70,6 +70,8 @@ export const api = {
 
   // Chat
   async sendMessage(message, conversationId = null, options = {}) {
+    const docIds = Array.isArray(options.doc_ids) ? options.doc_ids : [];
+
     const res = await fetch(`${API_BASE}/chat/`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -77,7 +79,7 @@ export const api = {
         message,
         conversation_id: conversationId,
         max_internal_sources: options.maxInternalSources ?? 5,
-        doc_ids: options.doc_ids || null,
+        doc_ids: docIds,
       }),
     });
 
@@ -126,11 +128,13 @@ export const api = {
       onError = () => {},
     } = callbacks;
 
+    const docIds = Array.isArray(options.doc_ids) ? options.doc_ids : [];
+
     const body = {
       message,
       conversation_id: conversationId,
       max_internal_sources: options.maxInternalSources ?? 5,
-      doc_ids: options.doc_ids || null,
+      doc_ids: docIds,
     };
 
     try {

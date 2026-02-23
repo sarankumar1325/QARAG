@@ -41,6 +41,9 @@ async def chat(request: ChatRequest):
     2. Uploaded PDFs → pgvector similarity (thread-specific only)
     """
     start_time = time.time()
+    # Enforce thread-scoped document filtering.
+    # Empty list means "this thread has no documents" (no global fallback).
+    thread_doc_ids = request.doc_ids if request.doc_ids is not None else []
 
     try:
         # Get or create conversation (isolated per thread)
@@ -50,6 +53,7 @@ async def chat(request: ChatRequest):
 
         print(f"[CHAT] conversation_id: {conversation_id}")
         print(f"[CHAT] doc_ids received: {request.doc_ids}")
+        print(f"[CHAT] thread_doc_ids: {thread_doc_ids}")
 
         # Add user message to THIS conversation only
         user_message = ChatMessage(
@@ -70,7 +74,7 @@ async def chat(request: ChatRequest):
             planner_use_web, planner_query = llm_service.plan_web_search(
                 query=request.message,
                 conversation_history=conversations[conversation_id][:-1],
-                has_uploaded_documents=bool(request.doc_ids),
+                has_uploaded_documents=bool(thread_doc_ids),
             )
             use_web_search = request.force_web_search or planner_use_web
             if use_web_search:
@@ -81,9 +85,11 @@ async def chat(request: ChatRequest):
 
         # PRIORITY 2: Search internal documents (thread-specific only)
         # Only search documents uploaded to THIS thread via doc_ids
-        search_kwargs = {"query": request.message, "n_results": request.max_internal_sources}
-        if request.doc_ids:
-            search_kwargs["doc_ids"] = request.doc_ids
+        search_kwargs = {
+            "query": request.message,
+            "n_results": request.max_internal_sources,
+            "doc_ids": thread_doc_ids,
+        }
 
         internal_sources = await document_store.search(**search_kwargs)
 
@@ -102,7 +108,7 @@ async def chat(request: ChatRequest):
             internal_sources=internal_filtered,
             web_sources=web_filtered,
             conversation_history=conversations[conversation_id][:-1],  # Only THIS conversation's history
-            has_uploaded_documents=bool(request.doc_ids),
+            has_uploaded_documents=bool(thread_doc_ids),
         )
 
         # Calculate confidence score
