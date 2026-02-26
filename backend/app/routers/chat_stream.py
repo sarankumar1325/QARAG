@@ -1,10 +1,9 @@
 """Streaming chat router - handles SSE streaming for real-time responses"""
 
 import json
-import re
 import time
 import uuid
-from typing import Dict, List, AsyncIterator
+from typing import List, AsyncIterator
 from datetime import datetime
 
 from fastapi import APIRouter, HTTPException
@@ -15,19 +14,13 @@ from app.models import ChatRequest, ChatMessage, Source, SourceType
 from app.services.document_store import document_store
 from app.services.tavily_search import tavily_search_service
 from app.services.llm_service import llm_service
-
-
-router = APIRouter(prefix="/chat", tags=["chat-stream"])
+from app.utils import detect_urls
 
 # In-memory conversation store (shared with non-streaming chat router)
 # Import from chat router to keep state consistent
 from app.routers.chat import conversations
 
-
-def detect_urls(message: str) -> List[str]:
-    """Extract URLs from user message"""
-    url_pattern = r'https?://[^\s<>"{}|\\^`\[\]]+'
-    return re.findall(url_pattern, message)
+router = APIRouter(prefix="/chat", tags=["chat-stream"])
 
 
 def format_sse(event: str, data: dict) -> str:

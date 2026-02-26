@@ -1,6 +1,5 @@
 """Chat router - handles question answering"""
 
-import re
 import uuid
 import time
 from typing import Dict, List
@@ -12,18 +11,13 @@ from app.models import ChatRequest, ChatResponse, ChatMessage, Source, SourceTyp
 from app.services.document_store import document_store
 from app.services.tavily_search import tavily_search_service
 from app.services.llm_service import llm_service
+from app.utils import detect_urls
 
 
 router = APIRouter(prefix="/chat", tags=["chat"])
 
 # In-memory conversation store (thread isolation - each thread is independent)
 conversations: Dict[str, List[ChatMessage]] = {}
-
-
-def detect_urls(message: str) -> List[str]:
-    """Extract URLs from user message"""
-    url_pattern = r'https?://[^\s<>"{}|\\^`\[\]]+'
-    return re.findall(url_pattern, message)
 
 
 @router.post("/", response_model=ChatResponse)
