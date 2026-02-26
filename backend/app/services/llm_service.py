@@ -35,11 +35,6 @@ class LLMService:
             self._model = settings.llm_model
         return self._model
 
-    def detect_urls(self, message: str) -> List[str]:
-        """Extract URLs from user message"""
-        url_pattern = r'https?://[^\s<>"{}|\\^`\[\]]+'
-        return re.findall(url_pattern, message)
-
     def plan_web_search(
         self,
         query: str,
