@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 import { Send, User, Bot, Copy, ThumbsUp, ThumbsDown, RefreshCw, FileText, Globe, Loader2, Square, Paperclip, X, File, Image, FileType } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
@@ -7,7 +7,7 @@ import { gsap } from 'gsap';
 import { api } from '../services/api';
 import DocumentUploadPanel from './DocumentUploadPanel';
 
-function ChatInterface({ thread, onUpdateThread, onToggleDrawer }) {
+function ChatInterface({ thread, onUpdateThread }) {
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [regenerating, setRegenerating] = useState(false);
@@ -17,7 +17,6 @@ function ChatInterface({ thread, onUpdateThread, onToggleDrawer }) {
   const [isStreaming, setIsStreaming] = useState(false);
   const [shouldStop, setShouldStop] = useState(false);
   const [showUploadPanel, setShowUploadPanel] = useState(false);
-  const abortControllerRef = useRef(null);
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
   const welcomeRef = useRef(null);
@@ -42,6 +41,7 @@ function ChatInterface({ thread, onUpdateThread, onToggleDrawer }) {
           );
         }
       }, welcomeRef);
+      return () => ctx.revert();
     }
   }, [thread?.messages, prefersReducedMotion]);
 
@@ -183,7 +183,8 @@ function ChatInterface({ thread, onUpdateThread, onToggleDrawer }) {
         if (sources.length > 0) {
           setExpandedSources({ [newMessages.length]: true });
         }
-      } catch (fallbackErr) {
+      } catch (err) {
+        console.error('Fallback request failed:', err);
         const errorMsg = (thread.documentIds?.length || 0) === 0
           ? "No documents are uploaded to this chat yet. Upload a document to get context-aware answers, or ask me a general question."
           : "Sorry, something went wrong. Please try again.";

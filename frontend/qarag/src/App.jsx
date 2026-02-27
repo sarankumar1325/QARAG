@@ -24,50 +24,67 @@ const getIsMobileViewport = () => {
   return window.innerWidth <= MOBILE_BREAKPOINT;
 };
 
+const buildNewThread = () => ({
+  id: crypto.randomUUID(),
+  title: 'New Chat',
+  createdAt: new Date().toISOString(),
+  updatedAt: new Date().toISOString(),
+  messages: [],
+  documentIds: [],
+  documents: [],
+});
+
 function App() {
-  const [threads, setThreads] = useState([]);
-  const [activeThreadId, setActiveThreadId] = useState(null);
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const initialThreadState = (() => {
+    if (typeof window === 'undefined') {
+      return { threads: [], activeThreadId: null };
+    }
+
+    const savedThreads = localStorage.getItem(THREADS_KEY);
+    const savedActive = localStorage.getItem(ACTIVE_THREAD_KEY);
+
+    if (savedThreads) {
+      const parsed = JSON.parse(savedThreads);
+      const normalizedThreads = parsed.map(t => ({
+        ...t,
+        documentIds: t.documentIds || [],
+        documents: t.documents || [],
+      }));
+      return {
+        threads: normalizedThreads,
+        activeThreadId: savedActive && normalizedThreads.find(t => t.id === savedActive) ? savedActive : null,
+      };
+    }
+
+    const newThread = buildNewThread();
+    return { threads: [newThread], activeThreadId: newThread.id };
+  })();
+
+  const [threads, setThreads] = useState(initialThreadState.threads);
+  const [activeThreadId, setActiveThreadId] = useState(initialThreadState.activeThreadId);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    const savedCollapsed = localStorage.getItem(SIDEBAR_COLLAPSED_KEY);
+    return savedCollapsed === 'true';
+  });
   const [docDrawerOpen, setDocDrawerOpen] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState(null); // { id, title }
   const [isMobile, setIsMobile] = useState(getIsMobileViewport);
 
-  // Load sidebar state from localStorage
-  useEffect(() => {
-    const savedCollapsed = localStorage.getItem(SIDEBAR_COLLAPSED_KEY);
-    if (savedCollapsed !== null) {
-      setSidebarCollapsed(savedCollapsed === 'true');
-    }
+  const createNewThread = useCallback(() => {
+    const newThread = buildNewThread();
+    setThreads(prev => [newThread, ...prev]);
+    setActiveThreadId(newThread.id);
+    setDocDrawerOpen(false);
+    setMobileMenuOpen(false);
+    return newThread.id;
   }, []);
 
   // Save sidebar state to localStorage
   useEffect(() => {
     localStorage.setItem(SIDEBAR_COLLAPSED_KEY, sidebarCollapsed);
   }, [sidebarCollapsed]);
-
-  // Load threads from localStorage
-  useEffect(() => {
-    const savedThreads = localStorage.getItem(THREADS_KEY);
-    const savedActive = localStorage.getItem(ACTIVE_THREAD_KEY);
-
-    if (savedThreads) {
-      const parsed = JSON.parse(savedThreads);
-      // Ensure each thread has documents array
-      const normalizedThreads = parsed.map(t => ({
-        ...t,
-        documentIds: t.documentIds || [],
-        documents: t.documents || [],
-      }));
-      setThreads(normalizedThreads);
-      if (savedActive && normalizedThreads.find(t => t.id === savedActive)) {
-        setActiveThreadId(savedActive);
-      }
-    } else {
-      // Create initial thread
-      createNewThread();
-    }
-  }, []);
 
   // Save threads to localStorage
   useEffect(() => {
@@ -102,36 +119,15 @@ function App() {
   // Keep viewport mode reactive
   useEffect(() => {
     const handleResize = () => {
-      setIsMobile(getIsMobileViewport());
+      const mobile = getIsMobileViewport();
+      setIsMobile(mobile);
+      if (!mobile) {
+        setMobileMenuOpen(false);
+      }
     };
 
-    handleResize();
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
-  }, []);
-
-  // Close mobile drawer when switching back to desktop layout
-  useEffect(() => {
-    if (!isMobile) {
-      setMobileMenuOpen(false);
-    }
-  }, [isMobile]);
-
-  const createNewThread = useCallback(() => {
-    const newThread = {
-      id: crypto.randomUUID(),
-      title: 'New Chat',
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-      messages: [],
-      documentIds: [],
-      documents: [],
-    };
-    setThreads(prev => [newThread, ...prev]);
-    setActiveThreadId(newThread.id);
-    setDocDrawerOpen(false);
-    setMobileMenuOpen(false);
-    return newThread.id;
   }, []);
 
   const updateThread = useCallback((threadId, updates) => {
@@ -249,7 +245,6 @@ function App() {
             <ChatInterface
               thread={activeThread}
               onUpdateThread={updateThread}
-              onToggleDrawer={() => setDocDrawerOpen(!docDrawerOpen)}
             />
           ) : (
             <div className="loading-state">Loading...</div>
