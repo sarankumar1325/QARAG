@@ -98,12 +98,6 @@ function ChatSidebar({
     return date.toLocaleDateString();
   };
 
-  // Micro-animation variants
-  const buttonVariants = {
-    whileHover: { scale: 1.02 },
-    whileTap: { scale: 0.97 }
-  };
-
   const springTransition = {
     type: 'spring',
     stiffness: 400,
